@@ -16,6 +16,16 @@ export function amount(value, decimals) {
   return `${negative ? '-' : ''}${abs / divisor}.${String(abs % divisor).padStart(decimals, '0')}`;
 }
 
+export function duration(seconds) {
+  const total = BigInt(seconds);
+  if (total < 0n) throw new RangeError('Elapsed time cannot be negative.');
+  return [[total / 86400n, 'd'], [total % 86400n / 3600n, 'h'],
+    [total % 3600n / 60n, 'm'], [total % 60n, 's']]
+    .filter(([value]) => value > 0n).map(([value, unit]) => `${value}${unit}`).join(' ') || '0s';
+}
+
+function solAmount(value) { return amount(value, 9).replace(/\.?0+$/, ''); }
+
 export function createTerminal({ noColor = false } = {}) {
   let fd;
   try { fd = openSync('/dev/tty', 'r+'); }
@@ -61,11 +71,14 @@ export function showPreview(ui, preview) {
   ui.line(`Host: ${preview.host}`);
   ui.line(`Job:  ${preview.job}`);
   const p = preview.payment;
-  ui.line(`Recorded elapsed time: ${p.elapsedSeconds} seconds (may include downtime)`);
-  ui.line(`Potential payment — estimate only: ${amount(p.estimatedNosBaseUnits, 6)} NOS`, 'warning');
-  ui.line(`Estimated SOL cost: ${amount(preview.sol.totalDebitLamports, 9)} SOL`);
-  if (BigInt(preview.sol.rentLamports)) ui.line(`Includes token-account creation: ${amount(preview.sol.rentLamports, 9)} SOL`, 'warning');
+  ui.line(`Time since the job started: ${duration(p.elapsedSeconds)} (may include downtime)`);
+  ui.line(`Potential payment: ${amount(p.estimatedNosBaseUnits, 6)} NOS (estimate; not guaranteed)`, 'warning');
+  ui.line(`Estimated transaction cost: ${solAmount(preview.sol.totalDebitLamports)} SOL`);
+  if (BigInt(preview.sol.rentLamports)) ui.line(`Includes token-account creation: ${solAmount(preview.sol.rentLamports)} SOL`, 'warning');
   ui.line(`Any unused funds go to the job payer: ${preview.snapshot.payer}`);
+  ui.line();
+  ui.line('The transaction passed simulation.', 'success');
+  ui.line('Nothing was submitted. This preview did not end the job.');
 }
 
 export function showOutcome(ui, result) {
@@ -84,7 +97,7 @@ export function showOutcome(ui, result) {
     ui.line('The recorded transaction expired without verified success. Inspect the job again before a new attempt.', 'warning');
   } else {
     ui.line('Transaction pending or unresolved. Outcome not yet confirmed.', 'warning');
-    ui.line('Use “Check an earlier attempt” before trying to end this job again.');
+    ui.line('Use “Check a previous submission” before trying to end this job again.');
   }
   if (result.signature) ui.line(`Transaction: https://explorer.solana.com/tx/${result.signature}`);
   if (result.message) ui.line(result.message, 'warning');

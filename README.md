@@ -1,7 +1,7 @@
 # Nosana Job Finish
 
-A menu-driven Linux tool to view a host's unfinished jobs, **test without making
-changes**, or **end a selected job** using its host key.
+A menu-driven Linux tool to view a host's unfinished jobs, **preview ending a
+job without making changes**, or **end a selected job** using its host key.
 
 **Payment may not always be guaranteed.** The tool reports payment only when it
 can verify a transfer in the finalized transaction. A zero-payment job can still
@@ -47,36 +47,48 @@ Bash, curl or wget, tar/gzip, sha256sum, getconf and util-linux `flock` are requ
 The launcher names missing prerequisites; it does not run sudo or apt.
 
 `main` provides the current launcher. For a fixed version, replace `main` with
-`v0.1.0` or a reviewed commit SHA. Always expect the tool header and menu: a failed
+`v0.1.1` or a reviewed commit SHA. Always expect the tool header and menu: a failed
 process-substitution download can otherwise leave Bash an empty script.
 
 ## Using the menu
 
-Choose the host identity:
+The first menu is **Choose a host or check a previous submission**:
 
 1. **Use the usual key file:** `~/.nosana/nosana_key.json`, with the full path shown.
 2. **Choose another key file on this computer:** for example
    `/home/alice/keys/host-2.json` or `~/keys/host-2.json`. Paths containing spaces work.
-3. **Use a public host address:** view and test only; no private key is needed.
-4. **Check an earlier attempt:** recover a saved transaction without loading a key.
+3. **Use a public host address:** preview only; no private key is needed.
+4. **Check a previous submission:** recover a saved transaction without loading a key.
 
 The tool derives the host's public address from the selected key and finds its
 unfinished runs. A single job is selected for preview; multiple jobs get a
 numbered selection. An entered job address must belong to that host.
 
+The selected host and key path are shown once when selected. If the key file's
+permissions allow access beyond its owner, the tool warns once: **Other users on
+this computer may be able to read or change this private key file.** Returning
+to the action menu does not repeat the host, key path or warning. Previews and
+final confirmations still show the full job and host addresses.
+
 The action menu offers:
 
 | Action | What happens |
 | --- | --- |
-| View and test a job (no changes) | Preview and simulate Finish without signing, publishing results or sending a transaction; the host still needs enough SOL for the simulated fee |
+| Preview ending a job (no changes) | Preview and simulate Finish without signing, publishing results or sending a transaction; the host still needs enough SOL for the simulated fee |
 | End a job | Preview, confirm, then sign locally and submit Finish |
-| Check an earlier attempt | Reconcile a saved transaction; optionally resend its identical signed bytes |
+| Check a previous submission | Reconcile a saved transaction; optionally resend its identical signed bytes |
 | Choose another host | Return to key/public-address selection |
 
-Before ending a job, the preview shows the full job and host addresses, recorded
-elapsed time, **potential payment — estimate only**, expected SOL fee and any
-token-account creation cost. Elapsed on-chain time can include downtime; the
-result report does not set the amount. The funded timeout caps the accounting.
+Before ending a job, the preview shows the full job and host addresses, time
+since the job started, potential payment labeled **(estimate; not guaranteed)**,
+and the estimated transaction cost, including any token-account creation cost.
+SOL amounts omit unnecessary trailing zeros. Time is shown in a readable form, for
+example: `Time since the job started: 2h 54m 1s (may include downtime)`.
+Elapsed on-chain time can include downtime; the result report does not set the
+amount. The funded timeout caps the accounting.
+
+A successful preview concludes: **The transaction passed simulation. Nothing
+was submitted. This preview did not end the job.**
 
 The final confirmation is deliberately simple:
 
@@ -130,7 +142,7 @@ The program determines whether payment occurs. Results distinguish:
 an estimate against sampled chain state, not proof of completed work or a payment
 receipt. A failed transaction can still incur a Solana network fee.
 
-## Interrupted connections and earlier attempts
+## Interrupted connections and previous submissions
 
 Before signed bytes leave the computer, the tool saves a private recovery record
 under `~/.local/state/nosana-job-finish` (or `$XDG_STATE_HOME/nosana-job-finish`).
@@ -138,7 +150,7 @@ It contains the signed transaction, signature, result CID and public account
 details. **It contains no private key.** Directory/file permissions are 700/600.
 
 Do not delete an unresolved record or start a new attempt on another PC after a
-timeout. Choose **Check an earlier attempt** on the original PC. The tool checks
+timeout. Choose **Check a previous submission** on the original PC. The tool checks
 the saved signature and can resend only the same bytes. It will not manufacture
 a new signature because a connection dropped. If expiry is proven, inspect the
 job again and review a new attempt. If another actor already settled the job,

@@ -1,4 +1,26 @@
-# Version 0.1.0 verification
+# Release verification
+
+## Version 0.1.1
+
+Verified on 2026-11-18 with Node.js 24.22.2: **39 tests passed**, zero
+failed/skipped, in **4.701 seconds**, including **10 actual terminal scenarios**.
+The changed checks cover readable elapsed time, precise SOL formatting, explicit
+payment uncertainty, the preview's no-submission conclusion, the renamed menus,
+and showing the selected identity once when returning to the action menu.
+A synthetic key with mode 0644 checks the clearer warning without changing its
+permissions. No real wallet was read and no live transaction was submitted.
+
+The initial synthetic-key test probe supplied an extra argv entry under Node's
+`--eval`, causing argument parsing to fail before CLI startup. The fixture was
+corrected; the original failed report was retained locally.
+
+The transaction adapter, protocol fixtures, dependencies and launcher template
+are unchanged. The ten isolated-program scenarios, unsigned mainnet simulation,
+and temporary-runtime validation below are reused for those unchanged inputs.
+Version 0.1.1 changes presentation and a recovery-menu error label; the new
+release has its own archive checksum and preserves the version 0.1.0 assets.
+
+## Version 0.1.0
 
 Candidate checks were performed on 2026-11-18 on Linux x86-64 with Node.js
 24.22.2. No real host key was loaded, no mainnet transaction was signed or
@@ -33,7 +55,7 @@ packaged source and lockfile hashes. See [isolated-program evidence](localnet-va
 and [launcher validation](launcher-validation.md) for scenario details and
 runtime provenance.
 
-## Failures retained during development
+### Failures retained during development
 
 - An early piped launcher waited for more stdin after the child exited. The
   launcher now explicitly exits with the child's status; its pipeline test passes.
@@ -50,7 +72,7 @@ runtime provenance.
   inside its error metadata. Job and host checks now cover that known schema,
   including multiple records; regression tests pass.
 
-## Limits
+### Limits
 
 Payment may not always be guaranteed. Zero-price jobs and failed transactions
 are explicitly tested; a failed on-chain transaction can still cost a fee.

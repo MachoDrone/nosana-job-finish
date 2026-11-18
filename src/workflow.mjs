@@ -4,7 +4,7 @@ export async function endJob({ chain, preview, identity, resultChoice, resultSto
   if (!identity.signer || identity.host !== preview.host) throw new Error('A matching host key is required to end this job.');
   const unlock = await journals.lock(preview.job);
   try {
-    if ((await journals.list({ pendingOnly: true, job: preview.job })).length) throw new Error('An earlier attempt is unresolved. Choose “Check an earlier attempt” first.');
+    if ((await journals.list({ pendingOnly: true, job: preview.job })).length) throw new Error('A previous submission is unresolved. Choose “Check a previous submission” first.');
     if (!await confirm()) return { status: 'cancelled' };
     await chain.assertUnchanged(preview);
     let cid;

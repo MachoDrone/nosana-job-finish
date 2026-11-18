@@ -8,9 +8,9 @@ import { JournalStore } from './journal.mjs';
 import { createResultStore, validateCid } from './results.mjs';
 import { endJob, checkAttempt } from './workflow.mjs';
 
-const HELP = `Nosana Job Finish 0.1.0 — Linux
+const HELP = `Nosana Job Finish 0.1.1 — Linux
 
-View a host's jobs, test without making changes, or end a selected job.
+Preview ending a host's job without making changes, or end a selected job.
 Payment may not always be guaranteed.
 
 Run: node src/cli.mjs [--key-file PATH] [--rpc HTTPS_URL] [--no-color]
@@ -37,7 +37,7 @@ try {
     rpc: { type: 'string', default: 'https://api.mainnet-beta.solana.com' },
   }, strict: true, allowPositionals: false });
   if (values.help) { console.log(HELP); }
-  else if (values.version) { console.log('0.1.0'); }
+  else if (values.version) { console.log('0.1.1'); }
   else {
   if (process.platform !== 'linux') throw new Error('This release supports Linux only.');
   const url = new URL(values.rpc);
@@ -48,20 +48,21 @@ try {
     ui.close(); process.exit(130);
   });
   process.once('SIGTERM', () => { ui.close(); process.exit(143); });
-  ui.line('Nosana Job Finish 0.1.0', 'title');
+  ui.line('Nosana Job Finish 0.1.1', 'title');
   ui.line('Payment may not always be guaranteed.', 'warning');
   const chain = createChain({ rpcUrl: values.rpc });
   const resultStore = createResultStore();
   const journals = new JournalStore();
   let identity = values['key-file'] ? await loadHostKey(values['key-file']) : undefined;
+  let showIdentity = true;
 
   async function chooseIdentity() {
     while (true) {
-      const selection = await ui.choose('Choose a host', [
+      const selection = await ui.choose('Choose a host or check a previous submission', [
         ['1', `Use the usual key file: ${homedir()}/.nosana/nosana_key.json`],
         ['2', 'Choose another key file on this computer'],
-        ['3', 'Use a public host address (view/test only)'],
-        ['4', 'Check an earlier attempt (no key needed)'], ['0', 'Exit'],
+        ['3', 'Use a public host address (preview only)'],
+        ['4', 'Check a previous submission (no key needed)'], ['0', 'Exit'],
       ], '1');
       if (selection === '0') return null;
       try {
@@ -90,10 +91,10 @@ try {
 
   async function recoveryMenu() {
     const entries = await journals.list();
-    if (!entries.length) { ui.line('No earlier attempts are saved on this computer.'); return; }
+    if (!entries.length) { ui.line('No previous submissions are saved on this computer.'); return; }
     const choices = entries.map((entry, i) => [String(i + 1), `${entry.signed.job} — ${entry.status} — ${entry.createdAt}`]);
     choices.push(['0', 'Back']);
-    const choice = await ui.choose('Check an earlier attempt', choices, '0');
+    const choice = await ui.choose('Check a previous submission', choices, '0');
     if (choice === '0') return;
     const entry = entries[Number(choice) - 1];
     ui.line(`Host: ${entry.signed.host}`); ui.line(`Job:  ${entry.signed.job}`);
@@ -109,25 +110,27 @@ try {
   while (true) {
     if (!identity) identity = await chooseIdentity();
     if (!identity) break;
-    ui.line(`\nHost: ${identity.host}`, 'title');
-    if (identity.path) ui.line(`Key file: ${identity.path}`);
-    if (identity.permissionWarning) ui.line('This key file grants access beyond its owner. Its permissions have not been changed.', 'warning');
+    if (showIdentity) {
+      ui.line(`\nHost: ${identity.host}`, 'title');
+      if (identity.path) ui.line(`Key file: ${identity.path}`);
+      if (identity.permissionWarning) ui.line('Other users on this computer may be able to read or change this private key file.', 'warning');
+      showIdentity = false;
+    }
     const choice = await ui.choose('What would you like to do?', [
-      ['1', 'View and test a job (no changes)'], ['2', 'End a job'],
-      ['3', 'Check an earlier attempt'],
+      ['1', 'Preview ending a job (no changes)'], ['2', 'End a job'],
+      ['3', 'Check a previous submission'],
       ['4', 'Choose another host'], ['0', 'Exit'],
     ], '1');
     if (choice === '0') break;
-    if (choice === '4') { identity = undefined; continue; }
+    if (choice === '4') { identity = undefined; showIdentity = true; continue; }
     try {
       if (choice === '3') { await recoveryMenu(); continue; }
-      if (choice === '2' && !identity.signer) { ui.line('Choose a matching host key to end a job. A public address can only view or test.', 'warning'); continue; }
+      if (choice === '2' && !identity.signer) { ui.line('Choose a matching host key to end a job. A public address can only preview.', 'warning'); continue; }
       const job = await selectJob(identity.host);
       if (!job) continue;
-      ui.line('Checking the job and testing the transaction without signing…', 'title');
+      ui.line('Checking the job and simulating the end-job transaction without signing…', 'title');
       const preview = await chain.prepare({ host: identity.host, job, resultCid: SIMULATION_RESULT_CID });
       showPreview(ui, preview);
-      ui.line('Test passed. No transaction was signed or submitted.', 'success');
       if (choice !== '2') continue;
       let resultChoice = {};
       const resultMode = await ui.choose('Job result', [
@@ -154,7 +157,7 @@ try {
       showOutcome(ui, result);
     } catch (error) {
       ui.line(error.message, 'danger');
-      ui.line('If an attempt was saved, use “Check an earlier attempt” to verify its outcome.');
+      ui.line('If a submission was saved, use “Check a previous submission” to verify its outcome.');
     }
   }
   }

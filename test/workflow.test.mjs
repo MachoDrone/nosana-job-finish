@@ -51,7 +51,7 @@ test('changed state or increased SOL cost stops before signing', async () => {
 });
 test('pending journal blocks another signature and recovery resends identical record only after yes', async () => {
   const f = fixture(); f.journals.list = async () => [{}];
-  await assert.rejects(endJob({ ...f, confirm: async () => true }), /earlier attempt/);
+  await assert.rejects(endJob({ ...f, confirm: async () => true }), /previous submission/);
   assert(!f.events.includes('sign'));
   const g = fixture(); const signed = { job: 'job', wire: 'same-bytes', signature: 'sig' }; let calls = 0;
   g.chain.reconcile = async () => ({ status: ++calls === 1 ? 'pending' : 'finalized' });

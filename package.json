@@ -1,6 +1,6 @@
 {
   "name": "nosana-job-finish",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Inspect, simulate, and manually end a Nosana job from a Linux PC",

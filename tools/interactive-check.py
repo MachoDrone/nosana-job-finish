@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Exercise the actual CLI/readline on a controlling terminal without a wallet or RPC.
+"""Exercise the actual CLI/readline without a real wallet or RPC.
 
 The child's HOME is disposable and its CLI RPC points to an unused loopback port.
-Only initial menus are visited. Confirmation uses the exported terminal UI directly.
+Only initial menus are visited. One public synthetic key checks warning text.
+Confirmation uses the exported terminal UI directly.
 Any spawn, timeout, signal, or assertion failure fails the check; nothing is skipped.
 """
 import argparse
@@ -129,6 +130,8 @@ def exercise(node):
         def normal(session):
             session.until("Choose [1]: ")
             assert b"Payment may not always be guaranteed." in session.output
+            assert b"Use a public host address (preview only)" in session.output
+            assert b"Check a previous submission (no key needed)" in session.output
             assert str(home / ".nosana/nosana_key.json").encode() in session.output
             assert b"\x1b[36m" in session.output, "Meaningful title color absent on color terminal"
             session.send("0\n")
@@ -156,6 +159,58 @@ def exercise(node):
             session.finish()
 
         scenario("invalid menus, public address and missing custom key recover", invalid)
+
+        def public_host(session):
+            host = "11111111111111111111111111111111"
+            session.until("Choose [1]: ")
+            session.send("3\n")
+            session.until("Public host address: ")
+            session.send(host + "\n")
+            session.until("What would you like to do?")
+            session.until("Choose [1]: ")
+            assert b"1) Preview ending a job (no changes)" in session.output
+            assert b"2) End a job" in session.output
+            assert b"3) Check a previous submission" in session.output
+            assert b"4) Choose another host" in session.output
+            session.send("2\n")
+            session.until("Choose a matching host key to end a job. A public address can only preview.")
+            session.until("What would you like to do?")
+            session.until("Choose [1]: ")
+            session.send("4\n")
+            session.until("Choose a host")
+            session.until("Choose [1]: ")
+            session.send("0\n")
+            output = session.finish()
+            assert output.count(f"Host: {host}".encode()) == 1, "Unchanged host identity repeated between actions"
+            assert b"Checking unfinished jobs" not in output, "Public-address End action reached the RPC flow"
+
+        scenario("public host cannot end a job and identity stays concise across menus", public_host)
+
+        def key_permissions(session):
+            warning = "Other users on this computer may be able to read or change this private key file."
+            session.until(warning)
+            session.until("Choose [1]: ")
+            session.send("0\n")
+            output = session.finish()
+            assert output.count(warning.encode()) == 1
+            assert (home / "public-fixture-key.json").stat().st_mode & 0o777 == 0o644, "Warning changed key permissions"
+
+        key_source = """
+import { createKeyPairSignerFromPrivateKeyBytes, getAddressEncoder } from '@solana/kit';
+import { writeFileSync, chmodSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+// Public deterministic test fixture; never a real wallet and never signs a transaction.
+const seed = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
+const signer = await createKeyPairSignerFromPrivateKeyBytes(seed);
+const path = join(homedir(), 'public-fixture-key.json');
+writeFileSync(path, JSON.stringify([...seed, ...getAddressEncoder().encode(signer.address)]));
+chmodSync(path, 0o644);
+// Node --eval has no script-name argv entry; parseArgs starts at argv[1].
+process.argv = [process.execPath, '--rpc', 'https://127.0.0.1:9', '--key-file', path];
+await import('./src/cli.mjs');
+"""
+        scenario("synthetic key permission warning is clear and leaves mode unchanged", key_permissions, source=key_source)
 
         def confirm(session):
             session.until("Do you want to end this job? [y/N] ")
