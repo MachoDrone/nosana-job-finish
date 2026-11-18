@@ -1,0 +1,29 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.2'
+          cache: npm
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check Bash launcher syntax
+        run: bash -n tools/launcher-template.sh
+      - name: Run tests
+        run: npm test
+      - name: Build production distribution
+        run: python3 tools/build-release.py
+      - name: Check prepared launcher matches source and locked dependencies
+        run: cmp nosana-job-finish.sh dist/nosana-job-finish.sh

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.test-artifacts/
+*.log
+.env
+*.key.json
+nosana_key.json
+__pycache__/
+*.pyc

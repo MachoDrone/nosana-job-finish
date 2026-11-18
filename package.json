@@ -1,0 +1,28 @@
+{
+  "name": "nosana-job-finish",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Inspect, simulate, and manually end a Nosana job from a Linux PC",
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/cli.mjs",
+    "test": "node --test --test-isolation=none test/*.test.mjs",
+    "test:localnet": "node tools/localnet-test.mjs",
+    "build:release": "python3 tools/build-release.py"
+  },
+  "dependencies": {
+    "@nosana/ipfs": "2.24.3",
+    "@nosana/jobs-program": "2.24.3",
+    "@nosana/kit": "2.24.5",
+    "@solana/kit": "8.3.0",
+    "@solana/rpc-spec-types": "8.3.0"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@solana/web3.js": "1.98.4",
+    "litesvm": "1.6.2"
+  }
+}
